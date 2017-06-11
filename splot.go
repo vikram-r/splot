@@ -35,7 +35,10 @@ func main() {
 		}
 	}()
 
-	ds := loadData()
+	ds, err := loadData()
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println(ds.XRange())
 	fmt.Println(ds.YRange())
@@ -43,7 +46,7 @@ func main() {
 	fmt.Println("done!")
 }
 
-func loadData() DataSet {
+func loadData() (DataSet, error) {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	scanner.Scan()
@@ -58,7 +61,7 @@ func loadData() DataSet {
 	for scanner.Scan() {
 		p, err := parseRow(scanner.Text())
 		if err != nil {
-			panic("Could not parse row " + strconv.Itoa(rowNum))
+			return nil, fmt.Errorf("Could not parse row: %s, reason: %q", strconv.Itoa(rowNum), err)
 		}
 		fmt.Println(p.x, p.y)
 
@@ -70,7 +73,7 @@ func loadData() DataSet {
 	}
 
 	data.sort()
-	return data
+	return data, nil
 }
 
 func parseRow(row string) (Point, error) {
