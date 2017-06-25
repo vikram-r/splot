@@ -3,6 +3,7 @@ package main
 import "fmt"
 import (
 	"bufio"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -15,18 +16,22 @@ type Point struct {
 	x, y int
 }
 
-type DataSet []Point
+type DataSet struct {
+	data  []Point
+	xName string
+	yName string
+}
 
 func (ds DataSet) sort() {
-	sort.Slice(ds, func(i, j int) bool { return ds[i].x < ds[j].x })
+	sort.Slice(ds.data, func(i, j int) bool { return ds.data[i].x < ds.data[j].x })
 }
 
 func (ds DataSet) XRange() (int, int) {
-	return ds[0].x, ds[len(ds)-1].x
+	return ds.data[0].x, ds.data[len(ds.data)-1].x
 }
 
 func (ds DataSet) YRange() (int, int) {
-	return ds[0].y, ds[len(ds)-1].y
+	return ds.data[0].y, ds.data[len(ds.data)-1].y
 }
 
 func main() {
@@ -61,47 +66,61 @@ func main() {
 	fmt.Printf("Terminal (w, h): (%d, %d)", tWidth, tHeight)
 }
 
-func loadData(input io.Reader) (DataSet, error) {
+func loadData(input io.Reader) (*DataSet, error) {
 	scanner := bufio.NewScanner(input)
 
-	scanner.Scan()
+	if !scanner.Scan() {
+		return nil, errors.New("No data found")
+	}
 	header := strings.Split(scanner.Text(), ",")
+	if len(header) < 2 || header[0] == "" || header[1] == "" {
+		return nil, errors.New("Header with 2 elements required")
+	}
 	xAxis := header[0]
 	yAxis := header[1]
 
 	fmt.Println(xAxis, yAxis)
 
-	var data DataSet
+	dataSet := DataSet{
+		xName: xAxis,
+		yName: yAxis,
+		data:  []Point{},
+	}
 	rowNum := 1
 	for scanner.Scan() {
-		p, err := parseRow(scanner.Text())
+		row := scanner.Text()
+		p, err := parseRow(row)
 		if err != nil {
-			return nil, fmt.Errorf("Could not parse row: %s, reason: %q", strconv.Itoa(rowNum), err)
+			return nil, fmt.Errorf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(rowNum), row, err)
 		}
 		fmt.Println(p.x, p.y)
 
-		data = append(data, p)
+		dataSet.data = append(dataSet.data, p)
 		rowNum++
 	}
 	if err := scanner.Err(); err != nil {
 		panic(err)
 	}
 
-	data.sort()
-	return data, nil
+	dataSet.sort()
+
+	return &dataSet, nil
 }
 
 func parseRow(row string) (Point, error) {
 	r := strings.Split(row, ",")
+	if len(r) < 2 {
+		return Point{}, errors.New("coordinates require 2 values")
+	}
 
 	x, err := strconv.Atoi(r[0])
 	if err != nil {
-		return Point{}, err
+		return Point{}, fmt.Errorf("%v is not a number", r[0])
 	}
 
 	y, err := strconv.Atoi(r[1])
 	if err != nil {
-		return Point{}, err
+		return Point{}, fmt.Errorf("%v is not a number", r[1])
 	}
 
 	return Point{x, y}, nil
