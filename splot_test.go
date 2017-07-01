@@ -37,13 +37,13 @@ func TestLoadDataInvalid(t *testing.T) {
 		testData string
 		expected error
 	}{
-		{"", errors.New("No data found")},
-		{"x", errors.New("Header with 2 elements required")},
-		{"x,", errors.New("Header with 2 elements required")},
-		{"x,y\n1", errors.New("Could not parse row 1: \"1\", reason: \"coordinates require 2 values\"")},
-		{"x,y\n1,2\n3", errors.New("Could not parse row 2: \"3\", reason: \"coordinates require 2 values\"")},
-		{"x,y\ngarbagex,2", errors.New("Could not parse row 1: \"garbagex,2\", reason: \"garbagex is not a number\"")},
-		{"x,y\n2,garbagey", errors.New("Could not parse row 1: \"2,garbagey\", reason: \"garbagey is not a number\"")},
+		{"", &RowError{0, "", errors.New("No data found")}},
+		{"x", &RowError{0, "x", errors.New("Header with 2 elements required")}},
+		{"x,", &RowError{0, "x,", errors.New("Header with 2 elements required")}},
+		{"x,y\n1", &RowError{1, "1", errors.New("coordinates require 2 values")}},
+		{"x,y\n1,2\n3", &RowError{2, "3", errors.New("coordinates require 2 values")}},
+		{"x,y\ngarbagex,2", &RowError{1, "garbagex,2", errors.New("garbagex is not a number")}},
+		{"x,y\n2,garbagey", &RowError{1, "2,garbagey", errors.New("garbagey is not a number")}},
 	}
 
 	for _, test := range testCases {

@@ -34,6 +34,16 @@ func (ds DataSet) YRange() (int, int) {
 	return ds.data[0].y, ds.data[len(ds.data)-1].y
 }
 
+type RowError struct {
+	rowNum int
+	rowText string
+	reason error
+}
+
+func (r *RowError) Error() string {
+	return fmt.Sprintf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(r.rowNum), r.rowText, r.reason)
+}
+
 func main() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -70,11 +80,11 @@ func loadData(input io.Reader) (*DataSet, error) {
 	scanner := bufio.NewScanner(input)
 
 	if !scanner.Scan() {
-		return nil, errors.New("No data found")
+		return nil, &RowError{0, "", errors.New("No data found")}
 	}
 	header := strings.Split(scanner.Text(), ",")
 	if len(header) < 2 || header[0] == "" || header[1] == "" {
-		return nil, errors.New("Header with 2 elements required")
+		return nil, &RowError{0, strings.Join(header, ","), errors.New("Header with 2 elements required")}
 	}
 	xAxis := header[0]
 	yAxis := header[1]
@@ -91,7 +101,7 @@ func loadData(input io.Reader) (*DataSet, error) {
 		row := scanner.Text()
 		p, err := parseRow(row)
 		if err != nil {
-			return nil, fmt.Errorf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(rowNum), row, err)
+			return nil, &RowError{rowNum, row, err}
 		}
 		fmt.Println(p.x, p.y)
 
