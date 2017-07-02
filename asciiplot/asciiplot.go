@@ -22,55 +22,108 @@ type dataSet struct {
 	xMin, xMax, yMin, yMax int
 }
 
-func (ds dataSet) sort() {
+func (ds *dataSet) sort() {
 	sort.Slice(ds.data, func(i, j int) bool { return ds.data[i].x < ds.data[j].x })
 }
 
-func (ds dataSet) xRange() (int, int) {
+func (ds *dataSet) xRange() (int, int) {
 	return ds.data[0].x, ds.data[len(ds.data)-1].x
 }
 
-func (ds dataSet) yRange() (int, int) {
+func (ds *dataSet) yRange() (int, int) {
 	return ds.data[0].y, ds.data[len(ds.data)-1].y
 }
 
-type canvas struct {
-	board  [][]rune
-	data   *dataSet
-	width  int
-	height int
+// TODO tickIntervalX, if required
+
+func (ds *dataSet) tickIntervalY(numTicks int) float64 {
+	return prettyInterval(ds.yMin, ds.yMax, numTicks)
 }
 
-const axisOffset = 6
-const axisLabelOffset = axisOffset - 2
-const axisTitleOffset = axisLabelOffset - 2
+// prettyInterval calculates a visually appealing interval per tick given the minimum value on the axis, maximum value
+// on the axis and the number of ticks required.
+// More information: https://stackoverflow.com/questions/326679/choosing-an-attractive-linear-scale-for-a-graphs-y-axis
+func prettyInterval(min int, max int, numTicks int) float64 {
+	trueInterval := float64(max-min) / float64(numTicks)
+	factor := math.Pow(10, math.Ceil(math.Log10(trueInterval)-1))
+	return math.Ceil(trueInterval/factor) * factor
+}
+
+type canvas struct {
+	board     [][]rune
+	data      *dataSet
+	width     int
+	height    int
+	numTicksY int
+}
+
+const xAxisTitleOffset = 2
+const xAxisTickLabelOffset = xAxisTitleOffset + 2
+const xAxisOffset = xAxisTickLabelOffset + 1
+
+func (c *canvas) graphHeight() int {
+	return c.height - xAxisOffset
+}
+
+func (c *canvas) graphWidth() int {
+	return c.width - yAxisOffset
+}
 
 func (c *canvas) drawXAxis() {
-	midWidth := int(math.Floor(float64(c.width / 2)))
+	midWidth := int(math.Floor(float64(c.graphWidth() / 2)))
 	xLabelMiddle := int(math.Floor(float64(len(c.data.xName) / 2)))
-	for j := 0; j < c.width; j++ {
+
+	for j := yAxisOffset; j < c.width; j++ {
 		if j >= midWidth-xLabelMiddle && j < midWidth+xLabelMiddle {
 			charIndex := j - (midWidth - xLabelMiddle)
 			r, _ := utf8.DecodeRune([]byte{c.data.xName[charIndex]})
 
-			c.board[c.height-axisTitleOffset][j] = r
+			c.board[c.height-xAxisTitleOffset][j] = r
 
 		}
-		c.board[c.height-axisOffset+1][j] = '_'
+		c.board[c.graphHeight()][j] = '_'
 	}
 }
 
+const yAxisTitleOffset = 1
+const yAxisTickLabelOffset = yAxisTitleOffset + 4
+const yAxisOffset = yAxisTickLabelOffset + 2
+
 func (c *canvas) drawYAxis() {
-	midHeight := int(math.Floor(float64(c.height / 2)))
+	tick := c.data.tickIntervalY(c.numTicksY)
+	lowerBound := tick * float64(int64((float64(c.data.yMin)/tick)+.5))
+	upperBound := tick * float64(int64(1+(float64(c.data.yMax)/tick)+.5))
+	fmt.Println("Pretty Interval: ", tick)
+	fmt.Println("Bounds: ", lowerBound, ", ", upperBound)
+
+	midHeight := int(math.Floor(float64(c.graphHeight() / 2)))
 	yLabelMiddle := int(math.Floor(float64(len(c.data.yName) / 2)))
-	for i := 0; i < c.height; i++ {
+
+	graphHeight := c.graphHeight()
+	graphTick := graphHeight / c.numTicksY
+	tickIndices := map[int]bool{}
+	// TODO should 0 be considered a tick?
+	for t := 1; t <= c.numTicksY; t++ {
+		tickIndices[graphHeight-(graphTick*t)] = true
+	}
+
+	for i := 0; i < graphHeight; i++ {
+		// draw axis title
 		if i >= midHeight-yLabelMiddle && i < midHeight+yLabelMiddle {
 			charIndex := i - (midHeight - yLabelMiddle)
 			r, _ := utf8.DecodeRune([]byte{c.data.yName[charIndex]})
 
-			c.board[i][axisTitleOffset] = r
+			c.board[i][yAxisTitleOffset] = r
 		}
-		c.board[i][axisOffset] = '|'
+
+		// draw tick
+		if _, ok := tickIndices[i]; ok {
+			c.board[i][yAxisOffset] = '+'
+		} else {
+			// draw axis
+			c.board[i][yAxisOffset] = '|'
+		}
+
 	}
 }
 
@@ -97,7 +150,7 @@ func (r *RowError) Error() string {
 	return fmt.Sprintf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(r.rowNum), r.rowText, r.reason)
 }
 
-func Render(dataSource io.Reader, to io.Writer, width int, height int, numTicksX int, numTicksY int) error {
+func Render(dataSource io.Reader, to io.Writer, width int, height int, numTicksY int) error {
 	ds, err := loadData(dataSource)
 	if err != nil {
 		return err
@@ -109,10 +162,11 @@ func Render(dataSource io.Reader, to io.Writer, width int, height int, numTicksX
 	}
 
 	canvas := canvas{
-		board:  b,
-		data:   ds,
-		width:  width,
-		height: height,
+		board:     b,
+		data:      ds,
+		width:     width,
+		height:    height,
+		numTicksY: numTicksY,
 	}
 
 	canvas.drawXAxis()
