@@ -86,7 +86,7 @@ func (c *canvas) drawXAxis() {
 }
 
 const yAxisTitleOffset = 1
-const yAxisTickLabelOffset = yAxisTitleOffset + 4
+const yAxisTickLabelOffset = yAxisTitleOffset + 5
 const yAxisOffset = yAxisTickLabelOffset + 2
 
 func (c *canvas) drawYAxis() {
@@ -101,12 +101,12 @@ func (c *canvas) drawYAxis() {
 
 	graphHeight := c.graphHeight()
 	graphTick := graphHeight / c.numTicksY
-	tickIndices := map[int]bool{}
+	tickIndices := map[int]string{}
 	// TODO should 0 be considered a tick?
 	for t := 1; t <= c.numTicksY; t++ {
-		tickIndices[graphHeight-(graphTick*t)] = true
+		tickIndices[graphHeight-(graphTick*t)] = strconv.FormatFloat(lowerBound + (float64(t) * tick), 'f', 1, 64)
 	}
-
+	fmt.Println(tickIndices)
 	for i := 0; i < graphHeight; i++ {
 		// draw axis title
 		if i >= midHeight-yLabelMiddle && i < midHeight+yLabelMiddle {
@@ -117,7 +117,11 @@ func (c *canvas) drawYAxis() {
 		}
 
 		// draw tick
-		if _, ok := tickIndices[i]; ok {
+		if s, ok := tickIndices[i]; ok {
+			label := []rune(s)
+			for lidx := len(label) - 1; lidx >= 0; lidx-- {
+				c.board[i][yAxisOffset - lidx - 1] = label[len(label) - 1 - lidx]
+			}
 			c.board[i][yAxisOffset] = '+'
 		} else {
 			// draw axis
