@@ -57,9 +57,10 @@ type canvas struct {
 	numTicksY int
 }
 
-const xAxisTitleOffset = 2
-const xAxisTickLabelOffset = xAxisTitleOffset + 2
-const xAxisOffset = xAxisTickLabelOffset + 1
+// prev offset + prev height + actual offset
+const xAxisTitleOffset = 1
+const xAxisTickLabelOffset = xAxisTitleOffset + 1 + 1
+const xAxisOffset = xAxisTickLabelOffset + 1 + 0
 
 func (c *canvas) graphHeight() int {
 	return c.height - xAxisOffset
@@ -85,9 +86,10 @@ func (c *canvas) drawXAxis() {
 	}
 }
 
+// prev offset + prev width + actual offset
 const yAxisTitleOffset = 1
-const yAxisTickLabelOffset = yAxisTitleOffset + 5
-const yAxisOffset = yAxisTickLabelOffset + 2
+const yAxisTickLabelOffset = yAxisTitleOffset + 1 + 2
+const yAxisOffset = yAxisTickLabelOffset + 4 + 2
 
 func (c *canvas) drawYAxis() {
 	tick := c.data.tickIntervalY(c.numTicksY)
@@ -104,7 +106,7 @@ func (c *canvas) drawYAxis() {
 	tickIndices := map[int]string{}
 	// TODO should 0 be considered a tick?
 	for t := 1; t <= c.numTicksY; t++ {
-		tickIndices[graphHeight-(graphTick*t)] = strconv.FormatFloat(lowerBound + (float64(t) * tick), 'f', 1, 64)
+		tickIndices[graphHeight-(graphTick*t)] = strconv.FormatFloat(lowerBound+(float64(t)*tick), 'f', 1, 64)
 	}
 	fmt.Println(tickIndices)
 	for i := 0; i < graphHeight; i++ {
@@ -119,8 +121,8 @@ func (c *canvas) drawYAxis() {
 		// draw tick
 		if s, ok := tickIndices[i]; ok {
 			label := []rune(s)
-			for lidx := len(label) - 1; lidx >= 0; lidx-- {
-				c.board[i][yAxisOffset - lidx - 1] = label[len(label) - 1 - lidx]
+			for lidx := 0; lidx < len(label); lidx++ {
+				c.board[i][yAxisTickLabelOffset+lidx] = label[lidx]
 			}
 			c.board[i][yAxisOffset] = '+'
 		} else {
