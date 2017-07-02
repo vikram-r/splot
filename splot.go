@@ -3,11 +3,11 @@ package main
 import "fmt"
 import (
 	"bufio"
+	"github.com/vikram-r/splot/asciiplot"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
-	"github.com/vikram-r/splot/asciiplot"
 )
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 		panic("Could not read terminal dimensions")
 	}
 
-	fmt.Printf("Terminal (w, h): (%d, %d)", tWidth, tHeight)
+	fmt.Println("Terminal (w, h): (%d, %d)", tWidth, tHeight)
 
 	err = asciiplot.Render(bufio.NewReader(file), os.Stdout, tWidth, tHeight, 10, 10)
 	if err != nil {
