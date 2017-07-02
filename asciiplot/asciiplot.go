@@ -41,6 +41,52 @@ type canvas struct {
 	height int
 }
 
+const axisOffset = 6
+const axisLabelOffset = axisOffset - 2
+const axisTitleOffset = axisLabelOffset - 2
+
+func (c *canvas) drawXAxis() {
+	midWidth := int(math.Floor(float64(c.width / 2)))
+	xLabelMiddle := int(math.Floor(float64(len(c.data.xName) / 2)))
+	for j := 0; j < c.width; j++ {
+		if j >= midWidth-xLabelMiddle && j < midWidth+xLabelMiddle {
+			charIndex := j - (midWidth - xLabelMiddle)
+			r, _ := utf8.DecodeRune([]byte{c.data.xName[charIndex]})
+
+			c.board[c.height-axisTitleOffset][j] = r
+
+		}
+		c.board[c.height-axisOffset+1][j] = '_'
+	}
+}
+
+func (c *canvas) drawYAxis() {
+	midHeight := int(math.Floor(float64(c.height / 2)))
+	yLabelMiddle := int(math.Floor(float64(len(c.data.yName) / 2)))
+	for i := 0; i < c.height; i++ {
+		if i >= midHeight-yLabelMiddle && i < midHeight+yLabelMiddle {
+			charIndex := i - (midHeight - yLabelMiddle)
+			r, _ := utf8.DecodeRune([]byte{c.data.yName[charIndex]})
+
+			c.board[i][axisTitleOffset] = r
+		}
+		c.board[i][axisOffset] = '|'
+	}
+}
+
+func (c *canvas) render(writer io.Writer) {
+	for i := 0; i < c.height; i++ {
+		for j := range c.board[i] {
+			if c.board[i][j] == 0 {
+				fmt.Fprint(writer, " ")
+			} else {
+				fmt.Fprint(writer, string(c.board[i][j]))
+			}
+		}
+		fmt.Fprintln(writer)
+	}
+}
+
 type RowError struct {
 	rowNum  int
 	rowText string
@@ -69,8 +115,9 @@ func Render(dataSource io.Reader, to io.Writer, width int, height int, numTicksX
 		height: height,
 	}
 
-	setAxes(canvas)
-	renderCanvas(canvas, to)
+	canvas.drawXAxis()
+	canvas.drawYAxis()
+	canvas.render(to)
 
 	return nil
 }
@@ -153,48 +200,4 @@ func parseRow(row string) (point, error) {
 	}
 
 	return point{x, y}, nil
-}
-
-const axisOffset = 6
-const axisLabelOffset = axisOffset - 2
-const axisTitleOffset = axisLabelOffset - 2
-
-func setAxes(canvas canvas) {
-	midHeight := int(math.Floor(float64(canvas.height / 2)))
-	yLabelMiddle := int(math.Floor(float64(len(canvas.data.yName) / 2)))
-	for i := 0; i < canvas.height; i++ {
-		if i >= midHeight-yLabelMiddle && i <= midHeight+yLabelMiddle-1 {
-			currOffset := i - (midHeight - yLabelMiddle)
-			r, _ := utf8.DecodeRune([]byte{canvas.data.yName[currOffset]})
-
-			canvas.board[i][axisTitleOffset] = r
-		}
-		canvas.board[i][axisOffset] = '|'
-	}
-
-	midWidth := int(math.Floor(float64(canvas.width / 2)))
-	xLabelMiddle := int(math.Floor(float64(len(canvas.data.xName) / 2)))
-	for j := 0; j < canvas.width; j++ {
-		if j >= midWidth-xLabelMiddle && j <= midWidth+xLabelMiddle-1 {
-			currOffset := j - (midWidth - xLabelMiddle)
-			r, _ := utf8.DecodeRune([]byte{canvas.data.xName[currOffset]})
-
-			canvas.board[canvas.height-axisTitleOffset][j] = r
-
-		}
-		canvas.board[canvas.height-axisOffset+1][j] = '_'
-	}
-}
-
-func renderCanvas(canvas canvas, writer io.Writer) {
-	for i := 0; i < canvas.height; i++ {
-		for j := range canvas.board[i] {
-			if canvas.board[i][j] == 0 {
-				fmt.Fprint(writer, " ")
-			} else {
-				fmt.Fprint(writer, string(canvas.board[i][j]))
-			}
-		}
-		fmt.Fprintln(writer)
-	}
 }
