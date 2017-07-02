@@ -16,8 +16,8 @@ type point struct {
 
 type dataSet struct {
 	data  []point
-	xName string
-	yName string
+	xName, yName string
+	xMin, xMax, yMin, yMax int
 }
 
 func (ds dataSet) sort() {
@@ -32,6 +32,8 @@ func (ds dataSet) yRange() (int, int) {
 	return ds.data[0].y, ds.data[len(ds.data)-1].y
 }
 
+type canvas [][]rune
+
 type RowError struct {
 	rowNum int
 	rowText string
@@ -42,7 +44,7 @@ func (r *RowError) Error() string {
 	return fmt.Sprintf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(r.rowNum), r.rowText, r.reason)
 }
 
-func Draw(dataSource io.Reader, to io.Writer, width int, height int) error {
+func Render(dataSource io.Reader, to io.Writer, width int, height int, numTicksX int, numTicksY int) error {
 	ds, err := loadData(dataSource)
 	if err != nil {
 		return err
@@ -71,6 +73,8 @@ func loadData(input io.Reader) (*dataSet, error) {
 		yName: yAxis,
 		data:  []point{},
 	}
+
+	var xMin, xMax, yMin, yMax int
 	rowNum := 1
 	for scanner.Scan() {
 		row := scanner.Text()
@@ -79,13 +83,34 @@ func loadData(input io.Reader) (*dataSet, error) {
 			return nil, &RowError{rowNum, row, err}
 		}
 
+		if rowNum == 1 {
+			xMin, xMax, yMin, yMax = p.x, p.x, p.y, p.y
+		}
+
 		dataSet.data = append(dataSet.data, p)
+
+		if p.x < xMin {
+			xMin = p.x
+		}
+		if p.x > xMax {
+			xMax = p.x
+		}
+		if p.y < yMin {
+			yMin = p.y
+		}
+		if p.y > yMax {
+			yMax = p.y
+		}
 		rowNum++
 	}
 	if err := scanner.Err(); err != nil {
 		panic(err)
 	}
 
+	dataSet.xMin = xMin
+	dataSet.xMax = xMax
+	dataSet.yMin = yMin
+	dataSet.yMax = yMax
 	dataSet.sort()
 
 	return &dataSet, nil

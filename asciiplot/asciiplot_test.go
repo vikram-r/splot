@@ -12,13 +12,13 @@ func TestLoadDataValid(t *testing.T) {
 		testData string
 		expected *dataSet
 	}{
-		{"x,y", &dataSet{[]point{}, "x", "y"}},
-		{"x,y\n", &dataSet{[]point{}, "x", "y"}},
-		{"x,y,ignored", &dataSet{[]point{}, "x", "y"}},
-		{"x,y\n1,2", &dataSet{[]point{{1, 2}}, "x", "y"}},
-		{"x,y\n1,2\n3,4", &dataSet{[]point{{1, 2}, {3, 4}}, "x", "y"}},
-		{"x,y\n3,4\n1,2", &dataSet{[]point{{1, 2}, {3, 4}}, "x", "y"}},
-		{"x,y\n3,4\n1,2\n2,8", &dataSet{[]point{{1, 2}, {2, 8}, {3, 4}}, "x", "y"}},
+		{"x,y", &dataSet{[]point{}, "x", "y", 0, 0, 0, 0}},
+		{"x,y\n", &dataSet{[]point{}, "x", "y", 0, 0, 0,0}},
+		{"x,y,ignored", &dataSet{[]point{}, "x", "y", 0,0,0,0}},
+		{"x,y\n1,2", &dataSet{[]point{{1, 2}}, "x", "y",1,1,2,2}},
+		{"x,y\n1,2\n3,4", &dataSet{[]point{{1, 2}, {3, 4}}, "x", "y",1,3,2,4}},
+		{"x,y\n3,4\n1,2", &dataSet{[]point{{1, 2}, {3, 4}}, "x", "y",1,3,2,4}},
+		{"x,y\n3,4\n1,2\n2,8", &dataSet{[]point{{1, 2}, {2, 8}, {3, 4}}, "x", "y",1,3,2,8}},
 	}
 
 	for _, test := range testCases {
