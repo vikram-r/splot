@@ -1,4 +1,4 @@
-package main
+package asciiplot
 
 import (
 	"errors"
@@ -10,15 +10,15 @@ import (
 func TestLoadDataValid(t *testing.T) {
 	testCases := []struct {
 		testData string
-		expected *DataSet
+		expected *dataSet
 	}{
-		{"x,y", &DataSet{[]Point{}, "x", "y"}},
-		{"x,y\n", &DataSet{[]Point{}, "x", "y"}},
-		{"x,y,ignored", &DataSet{[]Point{}, "x", "y"}},
-		{"x,y\n1,2", &DataSet{[]Point{{1, 2}}, "x", "y"}},
-		{"x,y\n1,2\n3,4", &DataSet{[]Point{{1, 2}, {3, 4}}, "x", "y"}},
-		{"x,y\n3,4\n1,2", &DataSet{[]Point{{1, 2}, {3, 4}}, "x", "y"}},
-		{"x,y\n3,4\n1,2\n2,8", &DataSet{[]Point{{1, 2}, {2, 8}, {3, 4}}, "x", "y"}},
+		{"x,y", &dataSet{[]point{}, "x", "y"}},
+		{"x,y\n", &dataSet{[]point{}, "x", "y"}},
+		{"x,y,ignored", &dataSet{[]point{}, "x", "y"}},
+		{"x,y\n1,2", &dataSet{[]point{{1, 2}}, "x", "y"}},
+		{"x,y\n1,2\n3,4", &dataSet{[]point{{1, 2}, {3, 4}}, "x", "y"}},
+		{"x,y\n3,4\n1,2", &dataSet{[]point{{1, 2}, {3, 4}}, "x", "y"}},
+		{"x,y\n3,4\n1,2\n2,8", &dataSet{[]point{{1, 2}, {2, 8}, {3, 4}}, "x", "y"}},
 	}
 
 	for _, test := range testCases {
@@ -26,7 +26,7 @@ func TestLoadDataValid(t *testing.T) {
 			t.Errorf("Expected: %v\n Actual Error: %v", test.expected, err)
 		} else {
 			if !reflect.DeepEqual(test.expected, r) {
-				t.Errorf("DataSet for testData: %s was incorrect!\nExpected: %v\nActual: %v", test.testData, test.expected, r)
+				t.Errorf("dataSet for testData: %s was incorrect!\nExpected: %v\nActual: %v", test.testData, test.expected, r)
 			}
 		}
 	}
@@ -60,10 +60,10 @@ func TestLoadDataInvalid(t *testing.T) {
 func TestParseRowValid(t *testing.T) {
 	testCases := []struct {
 		row      string
-		expected Point
+		expected point
 	}{
-		{"1,2", Point{1, 2}},
-		{"1123,2098", Point{1123, 2098}},
+		{"1,2", point{1, 2}},
+		{"1123,2098", point{1123, 2098}},
 	}
 
 	for _, test := range testCases {
