@@ -34,9 +34,11 @@ func (ds *dataSet) yRange() (int, int) {
 	return ds.data[0].y, ds.data[len(ds.data)-1].y
 }
 
-// TODO tickIntervalX, if required
+func (ds *dataSet) xTickInterval(numTicks int) float64 {
+	return prettyInterval(ds.xMin, ds.xMax, numTicks)
+}
 
-func (ds *dataSet) tickIntervalY(numTicks int) float64 {
+func (ds *dataSet) yTickInterval(numTicks int) float64 {
 	return prettyInterval(ds.yMin, ds.yMax, numTicks)
 }
 
@@ -50,11 +52,32 @@ func prettyInterval(min int, max int, numTicks int) float64 {
 }
 
 type canvas struct {
-	board     [][]rune
-	data      *dataSet
-	width     int
-	height    int
-	numTicksY int
+	board         [][]rune
+	data          *dataSet
+	height        int
+	width         int
+	xNumTicks     int
+	yNumTicks     int
+	xTickInterval float64
+	yTickInterval float64
+	graphHeight   int
+	graphWidth    int
+}
+
+func newCanvas(board [][]rune, data *dataSet, width int, height int, xNumTicks int, yNumTicks int) *canvas {
+	canvas := canvas{
+		board:         board,
+		data:          data,
+		width:         width,
+		height:        height,
+		xNumTicks:     xNumTicks,
+		yNumTicks:     yNumTicks,
+		xTickInterval: data.xTickInterval(xNumTicks),
+		yTickInterval: data.yTickInterval(yNumTicks),
+		graphHeight:   height - xAxisOffset,
+		graphWidth:    width - yAxisOffset,
+	}
+	return &canvas
 }
 
 // prev offset + prev height + actual offset
@@ -62,27 +85,38 @@ const xAxisTitleOffset = 1
 const xAxisTickLabelOffset = xAxisTitleOffset + 1 + 1
 const xAxisOffset = xAxisTickLabelOffset + 1 + 0
 
-func (c *canvas) graphHeight() int {
-	return c.height - xAxisOffset
-}
-
-func (c *canvas) graphWidth() int {
-	return c.width - yAxisOffset
-}
-
 func (c *canvas) drawXAxis() {
-	midWidth := int(math.Floor(float64(c.graphWidth() / 2)))
+	midWidth := int(math.Floor(float64(c.graphWidth / 2)))
 	xLabelMiddle := int(math.Floor(float64(len(c.data.xName) / 2)))
 
+	graphTick := c.graphWidth / c.xNumTicks
+	lowerBound := c.xTickInterval * float64(int64((float64(c.data.xMin)/c.xTickInterval)+.5))
+	tickIndices := map[int]string{}
+	for t := 1; t <= c.xNumTicks; t++ {
+		tickIndices[yAxisOffset+(graphTick*t)] = strconv.FormatFloat(lowerBound+(float64(t)*c.xTickInterval), 'f', 1, 64)
+	}
+
 	for j := yAxisOffset; j < c.width; j++ {
+		// draw axis title
 		if j >= midWidth-xLabelMiddle && j < midWidth+xLabelMiddle {
 			charIndex := j - (midWidth - xLabelMiddle)
 			r, _ := utf8.DecodeRune([]byte{c.data.xName[charIndex]})
 
 			c.board[c.height-xAxisTitleOffset][j] = r
-
 		}
-		c.board[c.graphHeight()][j] = '_'
+
+		// draw tick
+		if s, ok := tickIndices[j]; ok {
+			label := []rune(s)
+			labelBegin := j - len(label)
+			for lidx := 0; lidx < len(label); lidx++ {
+				c.board[c.height-xAxisTickLabelOffset][labelBegin+lidx] = label[lidx]
+			}
+			c.board[c.height-xAxisOffset][j] = '+'
+		} else {
+			// draw axis
+			c.board[c.graphHeight][j] = '_'
+		}
 	}
 }
 
@@ -92,24 +126,18 @@ const yAxisTickLabelOffset = yAxisTitleOffset + 1 + 2
 const yAxisOffset = yAxisTickLabelOffset + 4 + 2
 
 func (c *canvas) drawYAxis() {
-	tick := c.data.tickIntervalY(c.numTicksY)
-	lowerBound := tick * float64(int64((float64(c.data.yMin)/tick)+.5))
-	upperBound := tick * float64(int64(1+(float64(c.data.yMax)/tick)+.5))
-	fmt.Println("Pretty Interval: ", tick)
-	fmt.Println("Bounds: ", lowerBound, ", ", upperBound)
-
-	midHeight := int(math.Floor(float64(c.graphHeight() / 2)))
+	midHeight := int(math.Floor(float64(c.graphHeight / 2)))
 	yLabelMiddle := int(math.Floor(float64(len(c.data.yName) / 2)))
 
-	graphHeight := c.graphHeight()
-	graphTick := graphHeight / c.numTicksY
+	graphTick := c.graphHeight / c.yNumTicks
+	lowerBound := c.yTickInterval * float64(int64((float64(c.data.yMin)/c.yTickInterval)+.5))
 	tickIndices := map[int]string{}
 	// TODO should 0 be considered a tick?
-	for t := 1; t <= c.numTicksY; t++ {
-		tickIndices[graphHeight-(graphTick*t)] = strconv.FormatFloat(lowerBound+(float64(t)*tick), 'f', 1, 64)
+	for t := 1; t <= c.yNumTicks; t++ {
+		tickIndices[c.graphHeight-(graphTick*t)] = strconv.FormatFloat(lowerBound+(float64(t)*c.yTickInterval), 'f', 1, 64)
 	}
-	fmt.Println(tickIndices)
-	for i := 0; i < graphHeight; i++ {
+
+	for i := 0; i < c.graphHeight; i++ {
 		// draw axis title
 		if i >= midHeight-yLabelMiddle && i < midHeight+yLabelMiddle {
 			charIndex := i - (midHeight - yLabelMiddle)
@@ -156,7 +184,7 @@ func (r *RowError) Error() string {
 	return fmt.Sprintf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(r.rowNum), r.rowText, r.reason)
 }
 
-func Render(dataSource io.Reader, to io.Writer, width int, height int, numTicksY int) error {
+func Render(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int) error {
 	ds, err := loadData(dataSource)
 	if err != nil {
 		return err
@@ -167,13 +195,7 @@ func Render(dataSource io.Reader, to io.Writer, width int, height int, numTicksY
 		b[i] = make([]rune, width)
 	}
 
-	canvas := canvas{
-		board:     b,
-		data:      ds,
-		width:     width,
-		height:    height,
-		numTicksY: numTicksY,
-	}
+	canvas := newCanvas(b, ds, width, height, xNumTicks, yNumTicks)
 
 	canvas.drawXAxis()
 	canvas.drawYAxis()

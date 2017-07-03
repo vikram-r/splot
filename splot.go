@@ -34,7 +34,7 @@ func main() {
 
 	fmt.Println("Terminal (w, h): (%d, %d)", tWidth, tHeight)
 
-	err = asciiplot.Render(bufio.NewReader(file), os.Stdout, tWidth, tHeight, 10)
+	err = asciiplot.Render(bufio.NewReader(file), os.Stdout, tWidth, tHeight, 10, 10)
 	if err != nil {
 		panic(err)
 	}
