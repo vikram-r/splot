@@ -64,19 +64,26 @@ type canvas struct {
 	graphWidth    int
 }
 
-func newCanvas(board [][]rune, data *dataSet, width int, height int, xNumTicks int, yNumTicks int) *canvas {
+func newCanvas(board [][]rune, dataSet *dataSet, width int, height int, xNumTicks int, yNumTicks int) *canvas {
 	canvas := canvas{
 		board:         board,
-		data:          data,
+		data:          dataSet,
 		width:         width,
 		height:        height,
 		xNumTicks:     xNumTicks,
 		yNumTicks:     yNumTicks,
-		xTickInterval: data.xTickInterval(xNumTicks),
-		yTickInterval: data.yTickInterval(yNumTicks),
+		xTickInterval: dataSet.xTickInterval(xNumTicks),
+		yTickInterval: dataSet.yTickInterval(yNumTicks),
 		graphHeight:   height - xAxisOffset,
 		graphWidth:    width - yAxisOffset,
 	}
+
+	canvas.drawXAxis()
+	canvas.drawYAxis()
+	for _, p := range dataSet.data {
+		canvas.drawPoint(p)
+	}
+
 	return &canvas
 }
 
@@ -161,6 +168,16 @@ func (c *canvas) drawYAxis() {
 	}
 }
 
+func (c *canvas) drawPoint(p point) {
+	xRatio := float64(c.graphWidth/c.xNumTicks) / c.xTickInterval
+	yRatio := float64(c.graphHeight/c.yNumTicks) / c.yTickInterval
+
+	w := int64(yAxisOffset) + int64(float64(p.x)*xRatio)
+	h := int64(c.height) - int64(xAxisOffset+(float64(p.y)*yRatio))
+
+	c.board[h][w] = '*'
+}
+
 func (c *canvas) render(writer io.Writer) {
 	for i := 0; i < c.height; i++ {
 		for j := range c.board[i] {
@@ -197,8 +214,6 @@ func Render(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks
 
 	canvas := newCanvas(b, ds, width, height, xNumTicks, yNumTicks)
 
-	canvas.drawXAxis()
-	canvas.drawYAxis()
 	canvas.render(to)
 
 	return nil
