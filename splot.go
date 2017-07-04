@@ -6,6 +6,7 @@ import (
 	"github.com/vikram-r/splot/asciiplot"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"strconv"
 	"strings"
 )
@@ -14,6 +15,7 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(os.Stderr, "error: ", r)
+			fmt.Printf("trace: %s", debug.Stack())
 			os.Exit(1)
 		}
 	}()

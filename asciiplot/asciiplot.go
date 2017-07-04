@@ -46,7 +46,12 @@ func (ds *dataSet) yTickInterval(numTicks int) float64 {
 // on the axis and the number of ticks required.
 // More information: https://stackoverflow.com/questions/326679/choosing-an-attractive-linear-scale-for-a-graphs-y-axis
 func prettyInterval(min int, max int, numTicks int) float64 {
-	trueInterval := float64(max-min) / float64(numTicks)
+	var trueInterval float64
+	if min == max {
+		trueInterval = float64(min)
+	} else {
+		trueInterval = float64(max-min) / float64(numTicks)
+	}
 	factor := math.Pow(10, math.Ceil(math.Log10(trueInterval)-1))
 	return math.Ceil(trueInterval/factor) * factor
 }
@@ -97,10 +102,9 @@ func (c *canvas) drawXAxis() {
 	xLabelMiddle := int(math.Floor(float64(len(c.data.xName) / 2)))
 
 	graphTick := c.graphWidth / c.xNumTicks
-	lowerBound := c.xTickInterval * float64(int64((float64(c.data.xMin)/c.xTickInterval)+.5))
 	tickIndices := map[int]string{}
 	for t := 1; t <= c.xNumTicks; t++ {
-		tickIndices[yAxisOffset+(graphTick*t)] = strconv.FormatFloat(lowerBound+(float64(t)*c.xTickInterval), 'f', 1, 64)
+		tickIndices[yAxisOffset+(graphTick*t)] = strconv.FormatFloat(float64(t)*c.xTickInterval, 'f', 1, 64)
 	}
 
 	for j := yAxisOffset; j < c.width; j++ {
@@ -137,11 +141,10 @@ func (c *canvas) drawYAxis() {
 	yLabelMiddle := int(math.Floor(float64(len(c.data.yName) / 2)))
 
 	graphTick := c.graphHeight / c.yNumTicks
-	lowerBound := c.yTickInterval * float64(int64((float64(c.data.yMin)/c.yTickInterval)+.5))
 	tickIndices := map[int]string{}
 	// TODO should 0 be considered a tick?
 	for t := 1; t <= c.yNumTicks; t++ {
-		tickIndices[c.graphHeight-(graphTick*t)] = strconv.FormatFloat(lowerBound+(float64(t)*c.yTickInterval), 'f', 1, 64)
+		tickIndices[c.graphHeight-(graphTick*t)] = strconv.FormatFloat(float64(t)*c.yTickInterval, 'f', 1, 64)
 	}
 
 	for i := 0; i < c.graphHeight; i++ {
