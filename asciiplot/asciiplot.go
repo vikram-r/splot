@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -20,18 +19,6 @@ type dataSet struct {
 	data                   []point
 	xName, yName           string
 	xMin, xMax, yMin, yMax int
-}
-
-func (ds *dataSet) sort() {
-	sort.Slice(ds.data, func(i, j int) bool { return ds.data[i].x < ds.data[j].x })
-}
-
-func (ds *dataSet) xRange() (int, int) {
-	return ds.data[0].x, ds.data[len(ds.data)-1].x
-}
-
-func (ds *dataSet) yRange() (int, int) {
-	return ds.data[0].y, ds.data[len(ds.data)-1].y
 }
 
 func (ds *dataSet) xTickInterval(numTicks int) float64 {
@@ -278,7 +265,6 @@ func loadData(input io.Reader) (*dataSet, error) {
 	dataSet.xMax = xMax
 	dataSet.yMin = yMin
 	dataSet.yMax = yMax
-	dataSet.sort()
 
 	return &dataSet, nil
 }
