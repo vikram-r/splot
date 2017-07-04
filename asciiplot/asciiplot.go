@@ -37,7 +37,7 @@ func prettyInterval(min int, max int, numTicks int) float64 {
 	if min == max {
 		trueInterval = float64(min)
 	} else {
-		trueInterval = float64(max-min) / float64(numTicks)
+		trueInterval = float64(max) / float64(numTicks)
 	}
 	factor := math.Pow(10, math.Ceil(math.Log10(trueInterval)-1))
 	return math.Ceil(trueInterval/factor) * factor
