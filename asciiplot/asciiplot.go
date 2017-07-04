@@ -67,7 +67,7 @@ func newCanvas(board [][]rune, dataSet *dataSet, width int, height int, xNumTick
 		xTickInterval: dataSet.xTickInterval(xNumTicks),
 		yTickInterval: dataSet.yTickInterval(yNumTicks),
 		graphHeight:   height - xAxisOffset,
-		graphWidth:    width - yAxisOffset,
+		graphWidth:    width - yAxisOffset - 1,
 	}
 
 	canvas.drawXAxis()

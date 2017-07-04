@@ -34,7 +34,7 @@ func main() {
 		panic("Could not read terminal dimensions")
 	}
 
-	fmt.Println("Terminal (w, h): (%d, %d)", tWidth, tHeight)
+	fmt.Printf("Terminal (w, h): (%d, %d)\n", tWidth, tHeight)
 
 	err = asciiplot.Render(bufio.NewReader(file), os.Stdout, tWidth, tHeight, 10, 10)
 	if err != nil {
