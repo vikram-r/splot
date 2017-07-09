@@ -201,11 +201,9 @@ func (c *canvas) drawLine(from point, to point, char rune) {
 
 	slope := float64(to.y-from.y) / float64(to.x-from.x)
 
-	xScale := 1 / c.xRatio
-
 	for i := int64(1); i < toW-fromW; i++ {
 		w := i + fromW
-		h := fromH - int64(((float64(i)*xScale)*slope)+.5)
+		h := fromH - int64(((float64(i)/c.xRatio)*slope)+.5)
 		c.drawExactPoint(w, h, char)
 	}
 }
