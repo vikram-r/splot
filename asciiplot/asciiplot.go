@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -19,6 +20,10 @@ type dataSet struct {
 	data                   []point
 	xName, yName           string
 	xMin, xMax, yMin, yMax int
+}
+
+func (ds *dataSet) sort() {
+	sort.Slice(ds.data, func(i, j int) bool { return ds.data[i].x < ds.data[j].x })
 }
 
 func (ds *dataSet) xTickInterval(numTicks int) float64 {
@@ -52,11 +57,22 @@ type canvas struct {
 	yNumTicks     int
 	xTickInterval float64
 	yTickInterval float64
+	xRatio        float64
+	yRatio        float64
 	graphHeight   int
 	graphWidth    int
 }
 
 func newCanvas(board [][]rune, dataSet *dataSet, width int, height int, xNumTicks int, yNumTicks int) *canvas {
+	graphHeight := height - xAxisOffset
+	graphWidth := width - yAxisOffset - 1
+
+	xTickInterval := dataSet.xTickInterval(xNumTicks)
+	yTickInterval := dataSet.yTickInterval(yNumTicks)
+
+	xRatio := float64(graphWidth/xNumTicks) / xTickInterval
+	yRatio := float64(graphHeight/yNumTicks) / yTickInterval
+
 	canvas := canvas{
 		board:         board,
 		data:          dataSet,
@@ -64,16 +80,22 @@ func newCanvas(board [][]rune, dataSet *dataSet, width int, height int, xNumTick
 		height:        height,
 		xNumTicks:     xNumTicks,
 		yNumTicks:     yNumTicks,
-		xTickInterval: dataSet.xTickInterval(xNumTicks),
-		yTickInterval: dataSet.yTickInterval(yNumTicks),
-		graphHeight:   height - xAxisOffset,
-		graphWidth:    width - yAxisOffset - 1,
+		xTickInterval: xTickInterval,
+		yTickInterval: yTickInterval,
+		xRatio:        xRatio,
+		yRatio:        yRatio,
+		graphHeight:   graphHeight,
+		graphWidth:    graphWidth,
 	}
 
 	canvas.drawXAxis()
 	canvas.drawYAxis()
-	for _, p := range dataSet.data {
-		canvas.drawPoint(p)
+	for i, p := range dataSet.data {
+		canvas.drawPoint(p, '*')
+		if i != 0 {
+			// draw line from previous point
+			canvas.drawLine(dataSet.data[i-1], p, '.')
+		}
 	}
 
 	return &canvas
@@ -158,14 +180,34 @@ func (c *canvas) drawYAxis() {
 	}
 }
 
-func (c *canvas) drawPoint(p point) {
-	xRatio := float64(c.graphWidth/c.xNumTicks) / c.xTickInterval
-	yRatio := float64(c.graphHeight/c.yNumTicks) / c.yTickInterval
+func (c *canvas) getExactCoordinate(p point) (width int64, height int64) {
+	width = int64(yAxisOffset) + int64(float64(p.x)*c.xRatio)
+	height = int64(c.height) - int64(xAxisOffset+(float64(p.y)*c.yRatio))
+	return width, height
+}
 
-	w := int64(yAxisOffset) + int64(float64(p.x)*xRatio)
-	h := int64(c.height) - int64(xAxisOffset+(float64(p.y)*yRatio))
+func (c *canvas) drawPoint(p point, char rune) {
+	w, h := c.getExactCoordinate(p)
+	c.drawExactPoint(w, h, char)
+}
 
-	c.board[h][w] = '*'
+func (c *canvas) drawExactPoint(w int64, h int64, char rune) {
+	c.board[h][w] = char
+}
+
+func (c *canvas) drawLine(from point, to point, char rune) {
+	fromW, fromH := c.getExactCoordinate(from)
+	toW, _ := c.getExactCoordinate(to)
+
+	slope := float64(to.y-from.y) / float64(to.x-from.x)
+
+	xScale := 1 / c.xRatio
+
+	for i := int64(1); i < toW-fromW; i++ {
+		w := i + fromW
+		h := fromH - int64(((float64(i)*xScale)*slope)+.5)
+		c.drawExactPoint(w, h, char)
+	}
 }
 
 func (c *canvas) render(writer io.Writer) {
@@ -201,6 +243,8 @@ func Render(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks
 	for i := range b {
 		b[i] = make([]rune, width)
 	}
+
+	ds.sort()
 
 	canvas := newCanvas(b, ds, width, height, xNumTicks, yNumTicks)
 
