@@ -22,6 +22,10 @@ x axis,y axis
 2,2
 ```
 
+Result:
+
+![](http://i.imgur.com/uYp8mMO.jpg)
+
 
 ## TODO
 - The line drawing between points is finicky.
