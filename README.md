@@ -24,8 +24,7 @@ x axis,y axis
 
 Result:
 
-![](http://i.imgur.com/uYp8mMO.jpg)
-
+<img src="http://i.imgur.com/uYp8mMO.jpg" width="60%">
 
 ## TODO
 - The line drawing between points is finicky.
