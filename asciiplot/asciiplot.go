@@ -197,13 +197,14 @@ func (c *canvas) drawExactPoint(w int64, h int64, char rune) {
 
 func (c *canvas) drawLine(from point, to point, char rune) {
 	fromW, fromH := c.getExactCoordinate(from)
-	toW, _ := c.getExactCoordinate(to)
+	toW, toH := c.getExactCoordinate(to)
 
-	slope := float64(to.y-from.y) / float64(to.x-from.x)
+	deltaY := float64((toH - fromH) * -1) / float64(toW - fromW)
 
 	for i := int64(1); i < toW-fromW; i++ {
 		w := i + fromW
-		h := fromH - int64(((float64(i)/c.xRatio)*slope)+.5)
+		h := int64(float64(fromH) - (float64(i) * deltaY))
+
 		c.drawExactPoint(w, h, char)
 	}
 }
