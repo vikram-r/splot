@@ -1,4 +1,4 @@
-package asciiplot
+package splot
 
 import (
 	"errors"
