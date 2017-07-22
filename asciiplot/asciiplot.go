@@ -91,7 +91,7 @@ func newCanvas(board [][]rune, dataSet *dataSet, width int, height int, xNumTick
 	canvas.drawXAxis()
 	canvas.drawYAxis()
 	for i, p := range dataSet.data {
-		canvas.drawPoint(p, '*')
+		canvas.drawPoint(p, 'X')
 		if i != 0 {
 			// draw line from previous point
 			canvas.drawLine(dataSet.data[i-1], p, '.')
