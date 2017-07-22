@@ -18,13 +18,28 @@ The file should be a csv containing x,y coordinates, with the first row defining
 ```csv
 x axis,y axis
 0,0
-1,1
-2,2
+1,25
+2,50
+3,75
+4,100
+5,75
+6,50
+7,25
+8,25
+9,25
+10,30
+11,40
+12,20
+13,35
+14,50
+15,60
+16,30
+17,80
 ```
 
 Result:
 
-<img src="http://i.imgur.com/uYp8mMO.jpg" width="60%">
+<img src="http://i.imgur.com/uN4jB4r.jpg" width="60%">
 
 ## TODO
 - The line drawing between points is finicky.
