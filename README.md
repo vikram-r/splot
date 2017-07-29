@@ -1,12 +1,12 @@
 # splot
 
-splot (simple plot) is a command line utility to render an ascii graph from a list of coordinates.
+splot (simple plot) allows you to render ascii graphs from a list of coordinates. This project comes with a package that can be added to your own projects, and a CLI that can be used out of the box.
 
-## Usage
+## Usage (CLI)
 
 Build the executable
 ```
-go build
+go build ./cmd/splot/
 ```
 
 The executable takes a file path to a list of coordinates as a parameter
@@ -41,7 +41,20 @@ Result:
 
 <img src="http://i.imgur.com/uN4jB4r.jpg" width="60%">
 
+## Usage (Package)
+
+```
+go get github.com/vikram-r/splot
+```
+
+Then simply import
+```
+import "github.com/vikram-r/splot"
+```
+
 ## TODO
 - The line drawing between points is finicky.
-- Refactor to make the asciigraph package easy to use (outside of the CLI tool).
 - Provide a way to pipe data in (will need to provide terminal dimensions manually in this case)
+- Add splot binary release
+- Improve splot package interface, and update README
+- splot package should support configurable output destination (not just stdout)
