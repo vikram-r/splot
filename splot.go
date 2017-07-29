@@ -48,8 +48,13 @@ func prettyInterval(min int, max int, numTicks int) float64 {
 	return math.Ceil(trueInterval/factor) * factor
 }
 
+type pixel struct {
+	char          rune
+	ansiColorCode string
+}
+
 type canvas struct {
-	board         [][]rune
+	board         [][]*pixel // [h,w]
 	data          *dataSet
 	height        int
 	width         int
@@ -61,9 +66,21 @@ type canvas struct {
 	yRatio        float64
 	graphHeight   int
 	graphWidth    int
+	colorConfig   ColorConfig
 }
 
-func newCanvas(board [][]rune, dataSet *dataSet, width int, height int, xNumTicks int, yNumTicks int) *canvas {
+type ColorConfig struct {
+	Point      string
+	Line       string
+	XAxis      string
+	YAxis      string
+	XAxisTitle string
+	YAxisTitle string
+	Tick       string
+	TickLabel  string
+}
+
+func newCanvas(board [][]*pixel, dataSet *dataSet, width int, height int, xNumTicks int, yNumTicks int, colorConfig ColorConfig) *canvas {
 	graphHeight := height - xAxisOffset
 	graphWidth := width - yAxisOffset - 1
 
@@ -86,15 +103,16 @@ func newCanvas(board [][]rune, dataSet *dataSet, width int, height int, xNumTick
 		yRatio:        yRatio,
 		graphHeight:   graphHeight,
 		graphWidth:    graphWidth,
+		colorConfig: colorConfig,
 	}
 
 	canvas.drawXAxis()
 	canvas.drawYAxis()
 	for i, p := range dataSet.data {
-		canvas.drawPoint(p, 'X')
+		canvas.addPointPixels(p, 'X')
 		if i != 0 {
 			// draw line from previous point
-			canvas.drawLine(dataSet.data[i-1], p, '.')
+			canvas.addLinePixels(dataSet.data[i-1], p, '.')
 		}
 	}
 
@@ -122,7 +140,7 @@ func (c *canvas) drawXAxis() {
 			charIndex := j - (midWidth - xLabelMiddle)
 			r, _ := utf8.DecodeRune([]byte{c.data.xName[charIndex]})
 
-			c.board[c.height-xAxisTitleOffset][j] = r
+			c.addXAxisTitlePixel(j, c.height-xAxisTitleOffset, r)
 		}
 
 		// draw tick
@@ -130,12 +148,12 @@ func (c *canvas) drawXAxis() {
 			label := []rune(s)
 			labelBegin := j - len(label)
 			for lidx := 0; lidx < len(label); lidx++ {
-				c.board[c.height-xAxisTickLabelOffset][labelBegin+lidx] = label[lidx]
+				c.addTickLablePixel(labelBegin+lidx, c.height-xAxisTickLabelOffset, label[lidx])
 			}
-			c.board[c.height-xAxisOffset][j] = '+'
+			c.addTickPixel(j, c.height-xAxisOffset, '+')
 		} else {
 			// draw axis
-			c.board[c.graphHeight][j] = '_'
+			c.addXAxisPixel(j, c.graphHeight, '_')
 		}
 	}
 }
@@ -162,19 +180,19 @@ func (c *canvas) drawYAxis() {
 			charIndex := i - (midHeight - yLabelMiddle)
 			r, _ := utf8.DecodeRune([]byte{c.data.yName[charIndex]})
 
-			c.board[i][yAxisTitleOffset] = r
+			c.addYAxisTitlePixel(yAxisTitleOffset, i, r)
 		}
 
 		// draw tick
 		if s, ok := tickIndices[i]; ok {
 			label := []rune(s)
 			for lidx := 0; lidx < len(label); lidx++ {
-				c.board[i][yAxisTickLabelOffset+lidx] = label[lidx]
+				c.addTickLablePixel(yAxisTickLabelOffset+lidx, i, label[lidx])
 			}
-			c.board[i][yAxisOffset] = '+'
+			c.addTickPixel(yAxisOffset, i, '+')
 		} else {
 			// draw axis
-			c.board[i][yAxisOffset] = '|'
+			c.addYAxisPixel(yAxisOffset, i, '|')
 		}
 
 	}
@@ -186,40 +204,73 @@ func (c *canvas) getExactCoordinate(p point) (width int64, height int64) {
 	return width, height
 }
 
-func (c *canvas) drawPoint(p point, char rune) {
+func (c *canvas) addPointPixels(p point, char rune) {
 	w, h := c.getExactCoordinate(p)
-	c.drawExactPoint(w, h, char)
+	c.addPixel(w, h, pixel{char: char, ansiColorCode: c.colorConfig.Point})
 }
 
-func (c *canvas) drawExactPoint(w int64, h int64, char rune) {
-	c.board[h][w] = char
-}
-
-func (c *canvas) drawLine(from point, to point, char rune) {
+func (c *canvas) addLinePixels(from point, to point, char rune) {
 	fromW, fromH := c.getExactCoordinate(from)
 	toW, toH := c.getExactCoordinate(to)
 
-	deltaY := float64((toH - fromH) * -1) / float64(toW - fromW)
+	deltaY := float64((toH-fromH)*-1) / float64(toW-fromW)
 
 	for i := int64(1); i < toW-fromW; i++ {
 		w := i + fromW
 		h := int64(float64(fromH) - (float64(i) * deltaY))
 
-		c.drawExactPoint(w, h, char)
+		c.addPixel(w, h, pixel{char: char, ansiColorCode: c.colorConfig.Line})
 	}
+}
+
+func (c *canvas) addXAxisPixel(w int, h int, char rune) {
+	c.addPixel(int64(w), int64(h), pixel{char: char, ansiColorCode: c.colorConfig.XAxis})
+}
+
+func (c *canvas) addYAxisPixel(w int, h int, char rune) {
+	c.addPixel(int64(w), int64(h), pixel{char: char, ansiColorCode: c.colorConfig.YAxis})
+}
+
+func (c *canvas) addXAxisTitlePixel(w int, h int, char rune) {
+	c.addPixel(int64(w), int64(h), pixel{char: char, ansiColorCode: c.colorConfig.XAxisTitle})
+}
+
+func (c *canvas) addYAxisTitlePixel(w int, h int, char rune) {
+	c.addPixel(int64(w), int64(h), pixel{char: char, ansiColorCode: c.colorConfig.YAxisTitle})
+}
+
+func (c *canvas) addTickPixel(w int, h int, char rune) {
+	c.addPixel(int64(w), int64(h), pixel{char: char, ansiColorCode: c.colorConfig.Tick})
+}
+
+func (c *canvas) addTickLablePixel(w int, h int, char rune) {
+	c.addPixel(int64(w), int64(h), pixel{char: char, ansiColorCode: c.colorConfig.TickLabel})
+}
+
+func (c *canvas) addPixel(w int64, h int64, p pixel) {
+	c.board[h][w] = &p
 }
 
 func (c *canvas) render(writer io.Writer) {
 	for i := 0; i < c.height; i++ {
 		for j := range c.board[i] {
-			if c.board[i][j] == 0 {
+			p := c.board[i][j]
+			if p == nil {
 				fmt.Fprint(writer, " ")
+			} else if p.ansiColorCode != "" {
+				fmt.Fprint(writer, colorString(p.ansiColorCode, string(p.char)))
 			} else {
-				fmt.Fprint(writer, string(c.board[i][j]))
+				fmt.Fprint(writer, string(p.char))
 			}
 		}
 		fmt.Fprintln(writer)
 	}
+}
+
+const ansi_color_off = "\033[0m"
+
+func colorString(ansiCode string, text string) string {
+	return fmt.Sprintf("%s%s%s", ansiCode, text, ansi_color_off)
 }
 
 type RowError struct {
@@ -232,24 +283,28 @@ func (r *RowError) Error() string {
 	return fmt.Sprintf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(r.rowNum), r.rowText, r.reason)
 }
 
-func Render(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int) error {
+func RenderWithColor(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int, colorConfig ColorConfig) error {
 	ds, err := loadData(dataSource)
 	if err != nil {
 		return err
 	}
 
-	b := make([][]rune, height)
+	b := make([][]*pixel, height)
 	for i := range b {
-		b[i] = make([]rune, width)
+		b[i] = make([]*pixel, width)
 	}
 
 	ds.sort()
 
-	canvas := newCanvas(b, ds, width, height, xNumTicks, yNumTicks)
+	canvas := newCanvas(b, ds, width, height, xNumTicks, yNumTicks, colorConfig)
 
 	canvas.render(to)
 
 	return nil
+}
+
+func Render(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int) error {
+	return RenderWithColor(dataSource, to, width, height, xNumTicks, yNumTicks, ColorConfig{})
 }
 
 func loadData(input io.Reader) (*dataSet, error) {

@@ -34,9 +34,18 @@ func main() {
 		panic("Could not read terminal dimensions")
 	}
 
-	fmt.Printf("Terminal (w, h): (%d, %d)\n", tWidth, tHeight)
+	colors := splot.ColorConfig{
+		Point:"\033[93m",
+		Line:"\033[92m",
+		XAxis:"\033[34m",
+		YAxis:"\033[34m",
+		XAxisTitle:"\033[96m",
+		YAxisTitle:"\033[96m",
+		Tick:"",
+		TickLabel:"\033[95m",
+	}
 
-	err = splot.Render(bufio.NewReader(file), os.Stdout, tWidth, tHeight, 10, 10)
+	err = splot.RenderWithColor(bufio.NewReader(file), os.Stdout, tWidth, tHeight, 10, 10, colors)
 	if err != nil {
 		panic(err)
 	}
