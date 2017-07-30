@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	// TODO error handling should not be done using panics
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(os.Stderr, "error: ", r)
@@ -34,19 +35,28 @@ func main() {
 		panic("Could not read terminal dimensions")
 	}
 
-	colors := splot.ColorConfig{
-		Point:"\033[93m",
-		Line:"\033[92m",
-		XAxis:"\033[34m",
-		YAxis:"\033[34m",
-		XAxisTitle:"\033[96m",
-		YAxisTitle:"\033[96m",
-		Tick:"",
-		TickLabel:"\033[95m",
+	plot, err := splot.NewPlot(bufio.NewReader(file))
+	if err != nil {
+		panic(err)
 	}
 
-	err = splot.RenderWithColor(bufio.NewReader(file), os.Stdout, tWidth, tHeight, 10, 10, colors)
-	if err != nil {
+	// TODO make this configurable via flag
+	plot.SetColors(splot.ColorConfig{
+		Point:      "\033[93m",
+		Line:       "\033[92m",
+		XAxis:      "\033[34m",
+		YAxis:      "\033[34m",
+		XAxisTitle: "\033[96m",
+		YAxisTitle: "\033[96m",
+		Tick:       "",
+		TickLabel:  "\033[95m",
+	})
+
+	// TODO this blows up if the terminal width or height is <=10
+	plot.SetNumXTicks(10)
+	plot.SetNumYTicks(10)
+
+	if err := plot.Render(os.Stdout, tWidth, tHeight); err != nil {
 		panic(err)
 	}
 }

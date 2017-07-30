@@ -12,6 +12,12 @@ import (
 	"unicode/utf8"
 )
 
+type Plot struct {
+	dataSet              *dataSet
+	colors               ColorConfig
+	xNumTicks, yNumTicks int
+}
+
 type ErrRow struct {
 	rowNum  int
 	rowText string
@@ -20,6 +26,36 @@ type ErrRow struct {
 
 func (r *ErrRow) Error() string {
 	return fmt.Sprintf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(r.rowNum), r.rowText, r.reason)
+}
+
+// NewPlot creates a new Plot by reading the data from dataSource. The data should be in csv format with 2 columns, x
+// and y. A header defining the axis titles is required. If the dataSource format is invalid, an ErrRow will be returned.
+func NewPlot(dataSource io.Reader) (*Plot, error) {
+	ds, err := loadData(dataSource)
+	if err != nil {
+		return nil, err
+	}
+	ds.sort()
+
+	return &Plot{
+		dataSet:   ds,
+		xNumTicks: 10,
+		yNumTicks: 10,
+	}, nil
+}
+
+// Render renders this Plot to the writer with the provided width and height.
+func (p *Plot) Render(writer io.Writer, width int, height int) error {
+	if width <= p.xNumTicks {
+		return errors.New("Width must be greater than number of X ticks")
+	}
+	if height <= p.yNumTicks {
+		return errors.New("Height must be greater than number of Y ticks")
+	}
+
+	canvas := newCanvas(p.dataSet, width, height, p.xNumTicks, p.yNumTicks, p.colors)
+	canvas.render(writer)
+	return nil
 }
 
 type ColorConfig struct {
@@ -33,27 +69,27 @@ type ColorConfig struct {
 	TickLabel  string
 }
 
-func Render(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int) error {
-	return RenderWithColor(dataSource, to, width, height, xNumTicks, yNumTicks, ColorConfig{})
+// SetColors sets the color scheme of the plot. An empty string in any of the fields of ColorConfig denotes the default
+// color.
+func (p *Plot) SetColors(config ColorConfig) {
+	p.colors = config
 }
 
-func RenderWithColor(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int, colorConfig ColorConfig) error {
-	ds, err := loadData(dataSource)
-	if err != nil {
-		return err
+// SetNumXTicks sets the number of ticks that should be used on the X Axis. Must be greater than 0.
+func (p *Plot) SetNumXTicks(num int) error {
+	if num < 0 {
+		return errors.New("Greater than 0 ticks required")
 	}
+	p.xNumTicks = num
+	return nil
+}
 
-	b := make([][]*pixel, height)
-	for i := range b {
-		b[i] = make([]*pixel, width)
+// SetNumYTicks sets the number of ticks that should be used on the Y Axis. Must be greater than 0.
+func (p *Plot) SetNumYTicks(num int) error {
+	if num < 0 {
+		return errors.New("Greater than 0 ticks required")
 	}
-
-	ds.sort()
-
-	canvas := newCanvas(b, ds, width, height, xNumTicks, yNumTicks, colorConfig)
-
-	canvas.render(to)
-
+	p.yNumTicks = num
 	return nil
 }
 
@@ -114,7 +150,12 @@ type canvas struct {
 	colorConfig   ColorConfig
 }
 
-func newCanvas(board [][]*pixel, dataSet *dataSet, width int, height int, xNumTicks int, yNumTicks int, colorConfig ColorConfig) *canvas {
+func newCanvas(dataSet *dataSet, width int, height int, xNumTicks int, yNumTicks int, colorConfig ColorConfig) *canvas {
+	board := make([][]*pixel, height)
+	for i := range board {
+		board[i] = make([]*pixel, width)
+	}
+
 	graphHeight := height - xAxisOffset
 	graphWidth := width - yAxisOffset - 1
 
@@ -356,7 +397,7 @@ func loadData(input io.Reader) (*dataSet, error) {
 		rowNum++
 	}
 	if err := scanner.Err(); err != nil {
-		panic(err)
+		return nil, &ErrRow{rowNum: rowNum, reason: err}
 	}
 
 	dataSet.xMin = xMin
