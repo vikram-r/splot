@@ -12,6 +12,51 @@ import (
 	"unicode/utf8"
 )
 
+type ErrRow struct {
+	rowNum  int
+	rowText string
+	reason  error
+}
+
+func (r *ErrRow) Error() string {
+	return fmt.Sprintf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(r.rowNum), r.rowText, r.reason)
+}
+
+type ColorConfig struct {
+	Point      string
+	Line       string
+	XAxis      string
+	YAxis      string
+	XAxisTitle string
+	YAxisTitle string
+	Tick       string
+	TickLabel  string
+}
+
+func Render(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int) error {
+	return RenderWithColor(dataSource, to, width, height, xNumTicks, yNumTicks, ColorConfig{})
+}
+
+func RenderWithColor(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int, colorConfig ColorConfig) error {
+	ds, err := loadData(dataSource)
+	if err != nil {
+		return err
+	}
+
+	b := make([][]*pixel, height)
+	for i := range b {
+		b[i] = make([]*pixel, width)
+	}
+
+	ds.sort()
+
+	canvas := newCanvas(b, ds, width, height, xNumTicks, yNumTicks, colorConfig)
+
+	canvas.render(to)
+
+	return nil
+}
+
 type point struct {
 	x, y int
 }
@@ -69,17 +114,6 @@ type canvas struct {
 	colorConfig   ColorConfig
 }
 
-type ColorConfig struct {
-	Point      string
-	Line       string
-	XAxis      string
-	YAxis      string
-	XAxisTitle string
-	YAxisTitle string
-	Tick       string
-	TickLabel  string
-}
-
 func newCanvas(board [][]*pixel, dataSet *dataSet, width int, height int, xNumTicks int, yNumTicks int, colorConfig ColorConfig) *canvas {
 	graphHeight := height - xAxisOffset
 	graphWidth := width - yAxisOffset - 1
@@ -103,7 +137,7 @@ func newCanvas(board [][]*pixel, dataSet *dataSet, width int, height int, xNumTi
 		yRatio:        yRatio,
 		graphHeight:   graphHeight,
 		graphWidth:    graphWidth,
-		colorConfig: colorConfig,
+		colorConfig:   colorConfig,
 	}
 
 	canvas.drawXAxis()
@@ -273,49 +307,15 @@ func colorString(ansiCode string, text string) string {
 	return fmt.Sprintf("%s%s%s", ansiCode, text, ansi_color_off)
 }
 
-type RowError struct {
-	rowNum  int
-	rowText string
-	reason  error
-}
-
-func (r *RowError) Error() string {
-	return fmt.Sprintf("Could not parse row %s: \"%s\", reason: %q", strconv.Itoa(r.rowNum), r.rowText, r.reason)
-}
-
-func RenderWithColor(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int, colorConfig ColorConfig) error {
-	ds, err := loadData(dataSource)
-	if err != nil {
-		return err
-	}
-
-	b := make([][]*pixel, height)
-	for i := range b {
-		b[i] = make([]*pixel, width)
-	}
-
-	ds.sort()
-
-	canvas := newCanvas(b, ds, width, height, xNumTicks, yNumTicks, colorConfig)
-
-	canvas.render(to)
-
-	return nil
-}
-
-func Render(dataSource io.Reader, to io.Writer, width int, height int, xNumTicks, yNumTicks int) error {
-	return RenderWithColor(dataSource, to, width, height, xNumTicks, yNumTicks, ColorConfig{})
-}
-
 func loadData(input io.Reader) (*dataSet, error) {
 	scanner := bufio.NewScanner(input)
 
 	if !scanner.Scan() {
-		return nil, &RowError{0, "", errors.New("No data found")}
+		return nil, &ErrRow{0, "", errors.New("No data found")}
 	}
 	header := strings.Split(scanner.Text(), ",")
 	if len(header) < 2 || header[0] == "" || header[1] == "" {
-		return nil, &RowError{0, strings.Join(header, ","), errors.New("Header with 2 elements required")}
+		return nil, &ErrRow{0, strings.Join(header, ","), errors.New("Header with 2 elements required")}
 	}
 	xAxis := header[0]
 	yAxis := header[1]
@@ -332,7 +332,7 @@ func loadData(input io.Reader) (*dataSet, error) {
 		row := scanner.Text()
 		p, err := parseRow(row)
 		if err != nil {
-			return nil, &RowError{rowNum, row, err}
+			return nil, &ErrRow{rowNum, row, err}
 		}
 
 		if rowNum == 1 {
